@@ -1,0 +1,39 @@
+{
+  "student": {
+    "id": 123,
+    "student_id": "123456",
+    "name": "John Smith",
+    "profile_image": null
+  },
+  "course": {
+    "id": 45,
+    "code": "CS101",
+    "title": "Data Science"
+  },
+  "risk_prediction": {
+    "risk_score": 0.72,
+    "risk_level": "HIGH RISK",
+    "risk_color": "red",
+    "feedback": "Your current risk of failing is 0.72 (HIGH RISK). You must improve your attendance and weekly assignments."
+  },
+  "weekly_progress": [
+    {"week": 1, "student_score": 55.0, "class_average": 48.0},
+    {"week": 2, "student_score": 65.0, "class_average": 52.0},
+    {"week": 3, "student_score": 45.0, "class_average": 35.0},
+    {"week": 4, "student_score": 42.0, "class_average": 25.0},
+    {"week": 5, "student_score": 22.0, "class_average": 20.0}
+  ],
+  "engagement_tracker": {
+    "attendance": 56.0,
+    "assignments": 65.0,
+    "quizzes": 80.0,
+    "lab_activity": 45.0
+  },
+  "personalized_feedback": {
+    "message": "You missed several classes this week. You missed 2 labs this week.",
+    "suggestions": [
+      "Attend all classes to boost performance",
+      "Attend all labs to boost performance"
+    ]
+  }
+}
