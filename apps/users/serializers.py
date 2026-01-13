@@ -142,3 +142,53 @@ class ChangePasswordSerializer(serializers.Serializer):
         if not user.check_password(value):
             raise serializers.ValidationError("Old password is incorrect.")
         return value
+    
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True)
+    
+    class Meta:
+        model = User
+        fields = ['email', 'username', 'password', 'password_confirm', 
+                  'first_name', 'last_name', 'student_id', 'phone', 'country']
+    
+    def validate(self, data):
+        if data['password'] != data['password_confirm']:
+            raise serializers.ValidationError("Passwords don't match")
+        return data
+    
+    def create(self, validated_data):
+        validated_data.pop('password_confirm')
+        user = User.objects.create_user(
+            email=validated_data['email'],
+            username=validated_data['username'],
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            student_id=validated_data.get('student_id'),
+            phone=validated_data.get('phone'),
+            country=validated_data.get('country'),
+            user_type='student'
+        )
+        return user
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    
+    def validate(self, data):
+        user = authenticate(username=data['email'], password=data['password'])
+        if not user:
+            raise serializers.ValidationError("Invalid credentials")
+        if not user.is_active:
+            raise serializers.ValidationError("Account is disabled")
+        data['user'] = user
+        return data
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source='get_full_name', read_only=True)
+    
+    class Meta:
+        model = User
+        fields = ['user_id', 'email', 'username', 'student_id', 'first_name', 
+                  'last_name', 'full_name', 'phone', 'country', 'profile_image']

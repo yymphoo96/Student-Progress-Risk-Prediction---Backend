@@ -31,7 +31,7 @@ class Attendance(models.Model):
     
     class Meta:
         db_table = 'attendance'
-        unique_together = ('student', 'course', 'date')
+        unique_together = ('student', 'course', 'date','section')
     
     def __str__(self):
         return f"{self.student.username} - {self.course.course_code} - {self.date}"

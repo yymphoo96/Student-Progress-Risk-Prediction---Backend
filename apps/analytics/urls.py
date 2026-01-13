@@ -1,17 +1,12 @@
-# apps/analytics/urls.py
+# apps/analytics/urls.py - CREATE NEW FILE
 
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import StudentAnalyticsViewSet
+from django.urls import path
+from .views import DashboardViewSet
 
-router = DefaultRouter()
-router.register(r'analytics', StudentAnalyticsViewSet, basename='analytics')
+dashboard_view = DashboardViewSet.as_view({
+    'get': 'student_dashboard'
+})
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('dashboard/student_dashboard/', dashboard_view, name='student-dashboard'),
 ]
-
-# Main urls.py
-# urlpatterns += [
-#     path('api/', include('apps.analytics.urls')),
-# ]

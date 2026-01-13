@@ -1,4 +1,4 @@
-# apps/courses/serializers.py
+# apps/courses/serializers.py - REPLACE
 
 from rest_framework import serializers
 from .models import Course, CourseRegistration
@@ -6,12 +6,18 @@ from .models import Course, CourseRegistration
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = '__all__'
+        fields = ['course_id', 'course_code', 'course_title', 'year', 'term', 'description']
 
-class CourseRegistrationSerializer(serializers.ModelSerializer):
-    course_details = CourseSerializer(source='course', read_only=True)
-    student_name = serializers.CharField(source='student.get_full_name', read_only=True)
+class MyCourseSerializer(serializers.ModelSerializer):
+    # Flatten the course data directly
+    course_id = serializers.IntegerField(source='course.course_id')
+    course_code = serializers.CharField(source='course.course_code')
+    course_title = serializers.CharField(source='course.course_title')
+    year = serializers.IntegerField(source='course.year')
+    term = serializers.CharField(source='course.term')
+    description = serializers.CharField(source='course.description')
     
     class Meta:
         model = CourseRegistration
-        fields = '__all__'
+        fields = ['registration_id', 'course_id', 'course_code', 'course_title', 
+                  'year', 'term', 'description', 'enrolled_date', 'status']
