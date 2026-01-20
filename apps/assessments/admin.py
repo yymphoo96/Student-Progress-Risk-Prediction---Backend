@@ -10,7 +10,7 @@ from ..users.models import User
 @admin.register(Attendance)
 class AttendanceAdmin(admin.ModelAdmin):
     list_display = ['student', 'course', 'date', 'week_number', 'status', 'section']
-    list_filter = ['status', 'week_number', 'date', 'section']
+    list_filter = ['status', 'week_number', 'date', 'section','student','course']
     search_fields = ['student__email', 'student__username', 'course__course_code']
     date_hierarchy = 'date'
     
@@ -50,7 +50,7 @@ class AssignmentAdmin(admin.ModelAdmin):
 @admin.register(AssignmentSubmission)
 class AssignmentSubmissionAdmin(admin.ModelAdmin):
     list_display = ['student', 'assignment', 'score', 'status', 'submission_date']
-    list_filter = ['status', 'submission_date']
+    list_filter = ['status', 'submission_date','student','assignment']
     search_fields = ['student__email', 'student__username', 'assignment__title']
     date_hierarchy = 'submission_date'
 
@@ -64,7 +64,7 @@ class QuizAdmin(admin.ModelAdmin):
 @admin.register(QuizScore)
 class QuizScoreAdmin(admin.ModelAdmin):
     list_display = ['student', 'quiz', 'score', 'submitted_date']
-    list_filter = ['quiz__course', 'submitted_date']
+    list_filter = ['quiz__course', 'submitted_date','student','quiz']
     search_fields = ['student__email', 'student__username', 'quiz__title']
     date_hierarchy = 'submitted_date'
 

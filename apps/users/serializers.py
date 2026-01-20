@@ -144,34 +144,58 @@ class ChangePasswordSerializer(serializers.Serializer):
         return value
     
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
-    password_confirm = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True, required=True)
     
     class Meta:
         model = User
-        fields = ['email', 'username', 'password', 'password_confirm', 
-                  'first_name', 'last_name', 'student_id', 'phone', 'country']
+        fields = ['email', 'username', 'password', 'password2', 'first_name', 'last_name', 'student_id']
+        extra_kwargs = {
+            'first_name': {'required': True},
+            'last_name': {'required': True},
+            'student_id': {'required': True}
+        }
     
-    def validate(self, data):
-        if data['password'] != data['password_confirm']:
-            raise serializers.ValidationError("Passwords don't match")
-        return data
+    def validate_email(self, value):
+        """Validate that email is from kic.ac.jp domain"""
+        if not value.lower().endswith('kic.ac.jp'):
+            raise serializers.ValidationError(
+                "Please use KIC email domain (kic.ac.jp)"
+            )
+        
+        # Check if email already exists
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email is already registered.")
+        
+        return value.lower()
+    
+    def validate_student_id(self, value):
+        """Validate that student ID is unique"""
+        if User.objects.filter(student_id=value).exists():
+            raise serializers.ValidationError("A user with this student ID already exists.")
+        return value
+    
+    def validate(self, attrs):
+        """Validate that passwords match"""
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
+        return attrs
     
     def create(self, validated_data):
-        validated_data.pop('password_confirm')
+        """Create new user"""
+        validated_data.pop('password2')
+        
         user = User.objects.create_user(
             email=validated_data['email'],
             username=validated_data['username'],
             password=validated_data['password'],
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-            student_id=validated_data.get('student_id'),
-            phone=validated_data.get('phone'),
-            country=validated_data.get('country'),
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            student_id=validated_data['student_id'],
             user_type='student'
         )
+        
         return user
-
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)

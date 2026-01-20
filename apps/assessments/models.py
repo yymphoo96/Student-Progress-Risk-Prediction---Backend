@@ -14,7 +14,7 @@ from apps.courses.models import Course
 
 class Attendance(models.Model):
     attendance_id = models.AutoField(primary_key=True)
-    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     date = models.DateField()
     week_number = models.IntegerField()
@@ -54,7 +54,7 @@ class Assignment(models.Model):
 class AssignmentSubmission(models.Model):
     submission_id = models.AutoField(primary_key=True)
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
-    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
     submission_date = models.DateTimeField(auto_now_add=True)
     score = models.FloatField(null=True, blank=True)
     status = models.CharField(max_length=20, default='submitted',
@@ -86,7 +86,7 @@ class Quiz(models.Model):
 class QuizScore(models.Model):
     quiz_score_id = models.AutoField(primary_key=True)
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
-    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
     score = models.FloatField()
     submitted_date = models.DateTimeField(auto_now_add=True)
     
@@ -120,7 +120,7 @@ class LabActivity(models.Model):
 class LabParticipation(models.Model):
     participation_id = models.AutoField(primary_key=True)
     lab = models.ForeignKey(LabActivity, on_delete=models.CASCADE)  # Changed from lab_id
-    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
     date = models.DateField()
     score = models.FloatField()
     max_score = models.FloatField()

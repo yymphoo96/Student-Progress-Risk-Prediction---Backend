@@ -14,11 +14,15 @@ class User(AbstractUser):
         ('teacher', 'Teacher'),
         ('admin', 'Admin'),
     )
-    
+    GENDER_CHOICES = (
+        (0, 'Female'),
+        (1, 'Male'),
+    ) 
     user_id = models.AutoField(primary_key=True)
     email = models.EmailField(unique=True)
     student_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
     user_type = models.CharField(max_length=10, choices=USER_TYPES)
+    gender = models.IntegerField(choices=GENDER_CHOICES, default=1, null=True, blank=True)
     country = models.CharField(max_length=100, null=True, blank=True)
     profile_image = models.ImageField(upload_to='profiles/', null=True, blank=True)
     phone = models.CharField(max_length=20, null=True, blank=True)

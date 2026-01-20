@@ -1,15 +1,15 @@
-# apps/analytics/views.py - REPLACE _calc_weekly and related methods
+# apps/analytics/views.py - UPDATE student_dashboard method
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Avg, Sum
 from apps.assessments.models import (
     Attendance, Assignment, AssignmentSubmission,
     Quiz, QuizScore, LabParticipation
 )
 from apps.courses.models import Course, CourseRegistration, CourseTeaching
+from .ml_predictor import ml_predictor
 
 class DashboardViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -28,6 +28,7 @@ class DashboardViewSet(viewsets.ViewSet):
         except Course.DoesNotExist:
             return Response({'error': 'Course not found'}, status=404)
         
+        # Get course info
         teacher_name = 'Not Assigned'
         teaching = CourseTeaching.objects.filter(course=course).first()
         if teaching:
@@ -35,6 +36,7 @@ class DashboardViewSet(viewsets.ViewSet):
         
         current_week = self._get_current_week(student, course_id)
         
+        # Calculate engagement metrics
         engagement = {
             'attendance': self._calc_attendance(student, course_id),
             'assignments': self._calc_assignments(student, course_id),
@@ -42,13 +44,24 @@ class DashboardViewSet(viewsets.ViewSet):
             'lab_activity': self._calc_labs(student, course_id)
         }
         
-        # Overall engagement: Only Attendance, Assignments, Quizzes (NO Labs)
+        # Overall engagement (exclude labs)
         overall_engagement = round(
             (engagement['attendance'] + engagement['assignments'] + engagement['quizzes']) / 3,
             1
         )
         
-        risk = self._calc_risk(engagement)
+        # ✅ Get gender from student profile
+        # Female = 0, Male = 1
+        gender = self._get_gender(student)
+        
+        # ✅ Use ML model for risk prediction with gender
+        risk = ml_predictor.predict_risk(
+            quiz_avg=engagement['quizzes'],
+            assignment_avg=engagement['assignments'],
+            attendance_rate=engagement['attendance'],
+            gender=gender
+        )
+        
         weekly = self._calc_weekly_progress(student, course_id)
         
         return Response({
@@ -59,18 +72,41 @@ class DashboardViewSet(viewsets.ViewSet):
                 'year': course.year,
                 'term': course.term,
                 'current_week': current_week,
-                'total_weeks': 7  # Total weeks is 7
+                'total_weeks': 7
             },
             'student': {
                 'name': student.get_full_name() or student.username,
                 'student_id': student.student_id or 'N/A',
-                'email': student.email
+                'email': student.email,
+                'gender': 'Female' if gender == 0 else 'Male'  # Optional: include in response
             },
             'engagement': engagement,
             'overall_engagement': overall_engagement,
             'risk': risk,
             'weekly_progress': weekly
         })
+    
+    def _get_gender(self, student):
+        """
+        Get gender from student profile
+        Returns: 0 for Female, 1 for Male
+        """
+        # Check if student has gender field
+        if hasattr(student, 'gender'):
+            gender_value = student.gender
+            
+            # Handle different formats
+            if isinstance(gender_value, str):
+                gender_lower = gender_value.lower().strip()
+                if gender_lower in ['female', 'f', 'woman', '0']:
+                    return 0
+                elif gender_lower in ['male', 'm', 'man', '1']:
+                    return 1
+            elif isinstance(gender_value, int):
+                return 0 if gender_value == 0 else 1
+        
+        # Default to Male if not specified (or you can default to Female)
+        return 1
     
     def _get_current_week(self, student, course_id):
         latest = Attendance.objects.filter(
@@ -105,79 +141,38 @@ class DashboardViewSet(viewsets.ViewSet):
         possible = sum(l.max_score for l in labs)
         return round((earned / possible * 100) if possible > 0 else 0, 1)
     
-    def _calc_risk(self, eng):
-        score = (
-            (100 - eng['attendance']) * 0.25 +
-            (100 - eng['assignments']) * 0.30 +
-            (100 - eng['quizzes']) * 0.25 +
-            (100 - eng['lab_activity']) * 0.20
-        ) / 100
-        
-        level = 'HIGH RISK' if score >= 0.6 else 'MEDIUM RISK' if score >= 0.3 else 'LOW RISK'
-        color = 'red' if score >= 0.6 else 'orange' if score >= 0.3 else 'green'
-        
-        feedback = []
-        if eng['attendance'] < 60: feedback.append('Improve attendance')
-        if eng['assignments'] < 70: feedback.append('Complete assignments')
-        if eng['quizzes'] < 60: feedback.append('Study for quizzes')
-        if eng['lab_activity'] < 50: feedback.append('Attend lab sessions')
-        
-        return {
-            'risk_score': round(score, 2),
-            'risk_level': level,
-            'risk_color': color,
-            'feedback': ' and '.join(feedback) or 'Keep up the good work'
-        }
-    
     def _calc_weekly_progress(self, student, course_id):
-        """
-        Calculate weekly progress for 7 weeks
-        Progress score = Average of (Assignments + Quizzes) scores for that week
-        Only show data if week 2 or 3 has data
-        """
+        """Calculate weekly progress for 7 weeks"""
         result = []
         
-        # Get all students for class average
-        from apps.courses.models import CourseRegistration
         all_students = CourseRegistration.objects.filter(
             course_id=course_id,
             status='active'
         ).values_list('student_id', flat=True)
         
-        # Check if we have data in week 2 or 3
         has_week_2_data = (
             AssignmentSubmission.objects.filter(
-                student=student, 
-                assignment__course_id=course_id, 
-                assignment__week_number=2
+                student=student, assignment__course_id=course_id, assignment__week_number=2
             ).exists() or
             QuizScore.objects.filter(
-                student=student, 
-                quiz__course_id=course_id, 
-                quiz__week_number=2
+                student=student, quiz__course_id=course_id, quiz__week_number=2
             ).exists()
         )
         
         has_week_3_data = (
             AssignmentSubmission.objects.filter(
-                student=student, 
-                assignment__course_id=course_id, 
-                assignment__week_number=3
+                student=student, assignment__course_id=course_id, assignment__week_number=3
             ).exists() or
             QuizScore.objects.filter(
-                student=student, 
-                quiz__course_id=course_id, 
-                quiz__week_number=3
+                student=student, quiz__course_id=course_id, quiz__week_number=3
             ).exists()
         )
         
         show_data = has_week_2_data or has_week_3_data
         
-        for week in range(1, 8):  # 7 weeks total
-            # Calculate scores
+        for week in range(1, 8):
             student_score = self._calc_week_score(student, course_id, week)
             
-            # Class average
             week_scores = []
             for sid in all_students:
                 score = self._calc_week_score_for_student(sid, course_id, week)
@@ -186,7 +181,6 @@ class DashboardViewSet(viewsets.ViewSet):
             
             class_avg = sum(week_scores) / len(week_scores) if week_scores else None
             
-            # Only add to result if we should show data
             if show_data and student_score is not None:
                 result.append({
                     'week': week,
@@ -205,15 +199,12 @@ class DashboardViewSet(viewsets.ViewSet):
         return result
     
     def _calc_week_score(self, student, course_id, week_number):
-        """Calculate average score for a specific week (assignments + quizzes)"""
-        # Get assignments for this week
         assignment_subs = AssignmentSubmission.objects.filter(
             student=student,
             assignment__course_id=course_id,
             assignment__week_number=week_number
         ).exclude(status='missing')
         
-        # Get quizzes for this week
         quiz_scores = QuizScore.objects.filter(
             student=student,
             quiz__course_id=course_id,
@@ -222,22 +213,18 @@ class DashboardViewSet(viewsets.ViewSet):
         
         scores = []
         
-        # Add assignment scores
         for sub in assignment_subs:
             if sub.score is not None:
                 percentage = (sub.score / sub.assignment.max_score * 100) if sub.assignment.max_score > 0 else 0
                 scores.append(percentage)
         
-        # Add quiz scores
         for qs in quiz_scores:
             percentage = (qs.score / qs.quiz.max_score * 100) if qs.quiz.max_score > 0 else 0
             scores.append(percentage)
         
-        # Return average or None if no scores
         return sum(scores) / len(scores) if scores else None
     
     def _calc_week_score_for_student(self, student_id, course_id, week_number):
-        """Helper to calculate week score for any student"""
         from apps.users.models import User
         try:
             student = User.objects.get(user_id=student_id)
