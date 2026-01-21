@@ -4,6 +4,70 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from .models import User
+from .models import User, EmailOTP
+from .email_service import send_otp_email
+
+class RegisterRequestSerializer(serializers.Serializer):
+    """Step 1: Request OTP"""
+    email = serializers.EmailField()
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True)
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    student_id = serializers.CharField(max_length=50)
+    
+    def validate_email(self, value):
+        # if not value.lower().endswith('kic.ac.jp'):
+        #     raise serializers.ValidationError("Please use KIC email domain (kic.ac.jp)")
+        
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email is already registered.")
+        
+        return value.lower()
+    
+    def validate_student_id(self, value):
+        if User.objects.filter(student_id=value).exists():
+            raise serializers.ValidationError("This student ID is already registered.")
+        return value
+    
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value
+    
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({"password": "Passwords do not match."})
+        return attrs
+
+
+class VerifyOTPSerializer(serializers.Serializer):
+    """Step 2: Verify OTP and complete registration"""
+    email = serializers.EmailField()
+    otp_code = serializers.CharField(max_length=6)
+    
+    def validate(self, attrs):
+        email = attrs['email']
+        otp_code = attrs['otp_code']
+        
+        # Find valid OTP
+        try:
+            otp = EmailOTP.objects.get(
+                email=email,
+                otp_code=otp_code,
+                is_used=False
+            )
+            
+            if not otp.is_valid():
+                raise serializers.ValidationError("OTP has expired. Please request a new one.")
+            
+            attrs['otp_instance'] = otp
+            
+        except EmailOTP.DoesNotExist:
+            raise serializers.ValidationError("Invalid OTP code.")
+        
+        return attrs
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for user registration (Sign Up)"""
@@ -114,7 +178,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             'user_id', 'email', 'username', 'student_id',
             'first_name', 'last_name', 'full_name',
-            'user_type', 'phone', 'country', 'date_of_birth',
+            'user_type', 'phone', 'country',
             'profile_image', 'created_at', 'is_active'
         ]
         read_only_fields = ['user_id', 'email', 'created_at']
@@ -208,11 +272,3 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Account is disabled")
         data['user'] = user
         return data
-
-class UserProfileSerializer(serializers.ModelSerializer):
-    full_name = serializers.CharField(source='get_full_name', read_only=True)
-    
-    class Meta:
-        model = User
-        fields = ['user_id', 'email', 'username', 'student_id', 'first_name', 
-                  'last_name', 'full_name', 'phone', 'country', 'profile_image']

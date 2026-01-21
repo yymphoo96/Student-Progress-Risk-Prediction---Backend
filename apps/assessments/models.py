@@ -73,9 +73,16 @@ class Quiz(models.Model):
     quiz_id = models.AutoField(primary_key=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
+    description = models.TextField()
     date = models.DateField()
     max_score = models.FloatField()
     week_number = models.IntegerField()
+    status = models.CharField(max_length=20, default='submitted',
+choices=[
+        ('submitted', 'Submitted'),
+        ('late-submitted', 'Late Submitted'),
+        ('Not Submitted', 'Not Submitted')
+    ])
     
     class Meta:
         db_table = 'quizzes'

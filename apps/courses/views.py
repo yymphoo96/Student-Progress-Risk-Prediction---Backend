@@ -1,82 +1,134 @@
-# apps/courses/views.py
+# apps/courses/views.py - FIX course_details endpoint
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
 from .models import Course, CourseRegistration
-from .serializers import CourseSerializer, MyCourseSerializer
+from apps.assessments.models import Assignment, Quiz
+from apps.assessments.serializers import AssignmentSerializer, QuizSerializer
 
-class StudentCourseViewSet(viewsets.ViewSet):
-    """Student course endpoints"""
+class CourseViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
     
     @action(detail=False, methods=['get'])
     def my_courses(self, request):
-        """
-        Get all courses for current student
+        """Get courses enrolled by current student"""
+        student = request.user
         
-        GET /api/courses/my_courses/
-        Headers: Authorization: Token <token>
-        """
-        # Get student's enrolled courses
         registrations = CourseRegistration.objects.filter(
-            student=request.user,
+            student=student,
             status='active'
         ).select_related('course')
         
-        courses_data = []
+        courses = []
         for reg in registrations:
-            course = reg.course
-            courses_data.append({
-                'course_id': course.course_id,
-                'course_code': course.course_code,
-                'course_title': course.course_title,
-                'year': course.year,
-                'term': course.term,
-                'description': course.description,
+            courses.append({
+                'course_id': reg.course.course_id,
+                'course_code': reg.course.course_code,
+                'course_title': reg.course.course_title,
+                'term': reg.course.term,
+                'year': reg.course.year,
                 'enrolled_date': reg.enrolled_date,
                 'status': reg.status
             })
         
-        return Response({
-            'total_courses': len(courses_data),
-            'courses': courses_data
-        }, status=status.HTTP_200_OK)
+        return Response(courses)
     
-    @action(detail=False, methods=['get'])
-    def course_detail(self, request):
-        """
-        Get specific course details
+    @action(detail=True, methods=['get'], url_path='course_details')
+    def course_details(self, request, pk=None):
+        """Get course details with assignments and quizzes"""
+        student = request.user
         
-        GET /api/courses/course_detail/?course_id=45
-        Headers: Authorization: Token <token>
-        """
-        course_id = request.query_params.get('course_id')
+        # Get course
+        course = get_object_or_404(Course, course_id=pk)
         
-        if not course_id:
+        # Check if student is enrolled
+        if not CourseRegistration.objects.filter(
+            student=student,
+            course=course,
+            status='active'
+        ).exists():
             return Response(
-                {'error': 'course_id is required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {'error': 'Not enrolled in this course'}, 
+                status=status.HTTP_403_FORBIDDEN
             )
         
-        try:
-            course = Course.objects.get(course_id=course_id)
-            
-            # Check if student is enrolled
-            is_enrolled = CourseRegistration.objects.filter(
-                student=request.user,
-                course=course,
-                status='active'
-            ).exists()
-            
-            return Response({
-                'course': CourseSerializer(course).data,
-                'is_enrolled': is_enrolled
-            }, status=status.HTTP_200_OK)
+        # Get assignments
+        assignments = Assignment.objects.filter(
+            course=course
+        ).order_by('week_number', 'due_date')
         
-        except Course.DoesNotExist:
-            return Response(
-                {'error': 'Course not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        # Serialize assignments
+        assignment_data = []
+        for assignment in assignments:
+            from apps.assessments.models import AssignmentSubmission
+            
+            # Get submission status
+            try:
+                submission = AssignmentSubmission.objects.get(
+                    assignment=assignment,
+                    student=student
+                )
+                submission_status = submission.status
+                score = submission.score
+            except AssignmentSubmission.DoesNotExist:
+                submission_status = 'not_submitted'
+                score = None
+            
+            assignment_data.append({
+                'assignment_id': assignment.assignment_id,
+                'title': assignment.title,
+                'description': assignment.description,
+                'due_date': assignment.due_date,
+                'week_number': assignment.week_number,
+                'max_score': assignment.max_score,
+                'submission_status': submission_status,
+                'score': score
+            })
+        
+        # Get quizzes
+        quizzes = Quiz.objects.filter(
+            course=course
+        ).order_by('week_number', 'date')
+        
+        # Serialize quizzes
+        quiz_data = []
+        for quiz in quizzes:
+            from apps.assessments.models import QuizScore
+            
+            # Get quiz score
+            try:
+                quiz_score = QuizScore.objects.get(
+                    quiz=quiz,
+                    student=student
+                )
+                submission_status = 'completed'
+                score = quiz_score.score
+            except QuizScore.DoesNotExist:
+                submission_status = 'not_taken'
+                score = None
+            
+            quiz_data.append({
+                'quiz_id': quiz.quiz_id,
+                'title': quiz.title,
+                'description': quiz.description,
+                'quiz_date': quiz.date,
+                'week_number': quiz.week_number,
+                'max_score': quiz.max_score,
+                'submission_status': submission_status,
+                'score': score
+            })
+        
+        return Response({
+            'course': {
+                'course_id': course.course_id,
+                'course_code': course.course_code,
+                'course_title': course.course_title,
+                'term': course.term,
+                'year': course.year,
+            },
+            'assignments': assignment_data,
+            'quizzes': quiz_data
+        })

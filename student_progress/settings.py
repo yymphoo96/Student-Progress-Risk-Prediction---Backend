@@ -130,3 +130,30 @@ REST_FRAMEWORK = {
 
 # CORS
 CORS_ALLOW_ALL_ORIGINS = True
+
+# student_progress/settings.py - ADD email configuration
+
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development (prints to console)
+
+# For production, use SMTP:
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'mail.kic.ac.jp'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 's24151@kic.ac.jp'
+# EMAIL_HOST_PASSWORD = 'xxxxxxx'
+# DEFAULT_FROM_EMAIL = 'Student Progress <noreply@kic.ac.jp>'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  
+EMAIL_PORT = 587  
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False 
+EMAIL_HOST_USER = 'yinyinmayphoo@gmail.com'
+EMAIL_HOST_PASSWORD = 'ebtxifaqubukowzf'
+DEFAULT_FROM_EMAIL = 'Student Progress <yinyinmayphoo@gmail.com>'
+
+# Timeout settings (optional but recommended)
+EMAIL_TIMEOUT = 30
+# DEFAULT_FROM_EMAIL = 'Student Progress <s24151@st.kic.ac.jp>'
