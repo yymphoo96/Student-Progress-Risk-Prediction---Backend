@@ -57,11 +57,12 @@ class AssignmentSubmission(models.Model):
     student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
     submission_date = models.DateTimeField(auto_now_add=True)
     score = models.FloatField(null=True, blank=True)
-    status = models.CharField(max_length=20, default='submitted',
+    status = models.CharField(max_length=20, default='graded',
 choices=[
         ('submitted', 'Submitted'),
         ('late-submitted', 'Late Submitted'),
-        ('Not Submitted', 'Not Submitted')
+        ('Not Submitted', 'Not Submitted'),
+        ('graded','Graded')
     ])
     class Meta:
         db_table = 'assignment_submissions'
@@ -77,11 +78,12 @@ class Quiz(models.Model):
     date = models.DateField()
     max_score = models.FloatField()
     week_number = models.IntegerField()
-    status = models.CharField(max_length=20, default='submitted',
+    status = models.CharField(max_length=20, default='graded',
 choices=[
         ('submitted', 'Submitted'),
         ('late-submitted', 'Late Submitted'),
-        ('Not Submitted', 'Not Submitted')
+        ('Not Submitted', 'Not Submitted'),
+        ('graded','Graded')
     ])
     
     class Meta:
@@ -96,6 +98,13 @@ class QuizScore(models.Model):
     student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'user_type': 'student'})
     score = models.FloatField()
     submitted_date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default='submitted',
+    choices=[
+        ('submitted', 'Submitted'),
+        ('late-submitted', 'Late Submitted'),
+        ('Not Submitted', 'Not Submitted'),
+        ('graded','Graded')
+    ])
     
     class Meta:
         db_table = 'quiz_scores'

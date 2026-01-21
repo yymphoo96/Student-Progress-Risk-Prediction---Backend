@@ -104,7 +104,7 @@ class CourseViewSet(viewsets.ViewSet):
                     quiz=quiz,
                     student=student
                 )
-                submission_status = 'completed'
+                submission_status = quiz_score.status
                 score = quiz_score.score
             except QuizScore.DoesNotExist:
                 submission_status = 'not_taken'

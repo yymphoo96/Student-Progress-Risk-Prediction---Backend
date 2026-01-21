@@ -28,7 +28,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
                     assignment=obj,
                     student=request.user
                 )
-                return submission.status  # 'submitted', 'graded', 'missing'
+                return submission.status 
             except AssignmentSubmission.DoesNotExist:
                 return 'not_submitted'
         return 'not_submitted'
@@ -75,7 +75,7 @@ class QuizSerializer(serializers.ModelSerializer):
                     quiz=obj,
                     student=request.user
                 )
-                return 'completed'
+                return quiz_score.status
             except QuizScore.DoesNotExist:
                 return 'not_taken'
         return 'not_taken'
