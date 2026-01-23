@@ -10,30 +10,42 @@ class RiskPredictor:
     def __init__(self):
         self.model_path = os.path.join(settings.BASE_DIR, 'ml_models', 'std_risk_model.pkl')
         self.pipeline = None
-        self.load_model()
+
+        try:                                                                                                                                                                                                                                                                          
+            import joblib                                                                                                                                                                                                                                                             
+            model_path = os.path.join(settings.BASE_DIR, 'apps', 'analytics', 'ml_models', 'std_risk_model.pkl')                                                                                                                                                                      
+            if os.path.exists(model_path):                                                                                                                                                                                                                                            
+                self.pipeline = joblib.load(model_path)                                                                                                                                                                                                                               
+                self.model_loaded = True                                                                                                                                                                                                                                              
+                print("✅ ML model loaded successfully")                                                                                                                                                                                                                              
+        except Exception as e:                                                                                                                                                                                                                                                        
+            print(f"⚠️ Could not load ML model: {e}")                                                                                                                                                                                                                                  
+            print("⚠️ Using fallback risk calculation")                                                                                                                                                                                                                                
+            self.model_loaded = False
+    #     self.load_model()
     
-    def load_model(self):
-        """Load GridSearchCV model and extract best pipeline"""
-        try:
-            loaded = joblib.load(self.model_path)
+    # def load_model(self):
+    #     """Load GridSearchCV model and extract best pipeline"""
+    #     try:
+    #         loaded = joblib.load(self.model_path)
             
-            # GridSearchCV result - get best estimator
-            if hasattr(loaded, 'best_estimator_'):
-                self.pipeline = loaded.best_estimator_
-                print("✅ ML Model loaded from GridSearchCV")
-                print(f"   Best score: {loaded.best_score_:.4f}")
-                print(f"   Best params: {loaded.best_params_}")
-            else:
-                self.pipeline = loaded
-                print("✅ ML Pipeline loaded directly")
+    #         # GridSearchCV result - get best estimator
+    #         if hasattr(loaded, 'best_estimator_'):
+    #             self.pipeline = loaded.best_estimator_
+    #             print("✅ ML Model loaded from GridSearchCV")
+    #             print(f"   Best score: {loaded.best_score_:.4f}")
+    #             print(f"   Best params: {loaded.best_params_}")
+    #         else:
+    #             self.pipeline = loaded
+    #             print("✅ ML Pipeline loaded directly")
             
-            # Show pipeline structure
-            if hasattr(self.pipeline, 'named_steps'):
-                print(f"   Pipeline steps: {list(self.pipeline.named_steps.keys())}")
+    #         # Show pipeline structure
+    #         if hasattr(self.pipeline, 'named_steps'):
+    #             print(f"   Pipeline steps: {list(self.pipeline.named_steps.keys())}")
                 
-        except Exception as e:
-            print(f"❌ Error loading model: {e}")
-            self.pipeline = None
+    #     except Exception as e:
+    #         print(f"❌ Error loading model: {e}")
+    #         self.pipeline = None
     
     def predict_risk(self, quiz_avg, assignment_avg, attendance_rate, gender=1):
         """
