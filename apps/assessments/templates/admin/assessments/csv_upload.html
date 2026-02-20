@@ -1,0 +1,48 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}CSV Upload - {{ model_name }}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h2>Upload CSV for {{ model_name }}</h2>
+
+    {% if errors %}
+    <div class="errornote" style="margin-bottom: 15px;">
+        <p><strong>Some rows had errors:</strong></p>
+        <ul>
+            {% for error in errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if success_message %}
+    <div class="success" style="padding: 10px; background: #dff0d8; border: 1px solid #d0e9c6; border-radius: 4px; margin-bottom: 15px; color: #3c763d;">
+        <p>{{ success_message }}</p>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <fieldset class="module aligned">
+            <div class="form-row">
+                <label for="csv_file">CSV File:</label>
+                <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
+            </div>
+        </fieldset>
+        <div class="submit-row">
+            <input type="submit" value="Upload CSV" class="default">
+            <a href="../" class="button cancel-link">Cancel</a>
+        </div>
+    </form>
+
+    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+        <h3>Expected CSV Format for {{ model_name }}</h3>
+        <p><strong>Columns:</strong> <code>{{ expected_columns }}</code></p>
+        <h4>Example:</h4>
+        <pre style="background: #fff; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">{{ example_csv }}</pre>
+    </div>
+</div>
+{% endblock %}
