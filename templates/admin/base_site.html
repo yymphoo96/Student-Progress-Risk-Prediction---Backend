@@ -1,0 +1,27 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | EduRisk Admin{% endblock %}
+
+{% block dark-mode-vars %}
+{% endblock %}
+
+{% block extrahead %}
+<meta name="color-scheme" content="light only">
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <span style="margin-right: 8px;">🎓</span>EduRisk Admin
+    </a>
+</h1>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+{% now "U" as timestamp %}
+<link rel="stylesheet" href="{% static 'admin/css/custom_admin.css' %}?v={{ timestamp }}">
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

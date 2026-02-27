@@ -1,0 +1,18 @@
+{% extends "admin/login.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/custom_admin.css' %}">
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <span style="margin-right: 8px;">🎓</span>EduRisk
+    </a>
+</h1>
+<p style="color: rgba(255,255,255,.7); font-size: 14px; margin-top: 4px; font-weight: 500;">
+    Student Progress Tracking System
+</p>
+{% endblock %}

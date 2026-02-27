@@ -5,44 +5,78 @@
 
 {% block content %}
 <div id="content-main">
-    <h2>Upload CSV for {{ model_name }}</h2>
+    <div style="max-width: 720px;">
+        <h1 style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: linear-gradient(135deg, #1565C0, #0D47A1); border-radius: 12px; color: #fff; font-size: 20px;">📄</span>
+            Upload CSV
+        </h1>
+        <p style="color: #64748B; font-size: 15px; margin-bottom: 28px;">
+            Bulk import <strong>{{ model_name }}</strong> records from a CSV file.
+        </p>
 
-    {% if errors %}
-    <div class="errornote" style="margin-bottom: 15px;">
-        <p><strong>Some rows had errors:</strong></p>
-        <ul>
-            {% for error in errors %}
-            <li>{{ error }}</li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-
-    {% if success_message %}
-    <div class="success" style="padding: 10px; background: #dff0d8; border: 1px solid #d0e9c6; border-radius: 4px; margin-bottom: 15px; color: #3c763d;">
-        <p>{{ success_message }}</p>
-    </div>
-    {% endif %}
-
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <fieldset class="module aligned">
-            <div class="form-row">
-                <label for="csv_file">CSV File:</label>
-                <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
-            </div>
-        </fieldset>
-        <div class="submit-row">
-            <input type="submit" value="Upload CSV" class="default">
-            <a href="../" class="button cancel-link">Cancel</a>
+        {% if errors %}
+        <div style="padding: 16px 20px; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #EF4444;">
+            <p style="margin: 0 0 8px; font-weight: 700; color: #991B1B; font-size: 14px;">⚠ Some rows had errors:</p>
+            <ul style="margin: 0; padding-left: 20px; color: #B91C1C; font-size: 13px; line-height: 1.8;">
+                {% for error in errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
         </div>
-    </form>
+        {% endif %}
 
-    <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
-        <h3>Expected CSV Format for {{ model_name }}</h3>
-        <p><strong>Columns:</strong> <code>{{ expected_columns }}</code></p>
-        <h4>Example:</h4>
-        <pre style="background: #fff; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">{{ example_csv }}</pre>
+        {% if success_message %}
+        <div style="padding: 16px 20px; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #10B981;">
+            <p style="margin: 0; font-weight: 700; color: #065F46; font-size: 14px;">✓ {{ success_message }}</p>
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div style="background: #fff; border: 2px dashed #CBD5E1; border-radius: 16px; padding: 40px 32px; text-align: center; margin-bottom: 24px; transition: border-color .2s;"
+                 onmouseover="this.style.borderColor='#1565C0'" onmouseout="this.style.borderColor='#CBD5E1'">
+                <div style="font-size: 40px; margin-bottom: 12px;">📁</div>
+                <label for="csv_file" style="display: block; cursor: pointer;">
+                    <span style="font-size: 16px; font-weight: 700; color: #1E293B;">Choose CSV file</span>
+                    <br>
+                    <span style="font-size: 13px; color: #94A3B8; margin-top: 4px; display: inline-block;">Accepts .csv files only</span>
+                </label>
+                <input type="file" name="csv_file" id="csv_file" accept=".csv" required
+                       style="margin-top: 16px; font-size: 14px; color: #64748B;">
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-bottom: 32px;">
+                <button type="submit" style="flex: 1; padding: 14px 24px; background: linear-gradient(135deg, #1565C0, #0D47A1); color: #fff; border: none; border-radius: 12px; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: 0 4px 12px rgba(21,101,192,.3); transition: all .2s;"
+                        onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(21,101,192,.4)'"
+                        onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(21,101,192,.3)'">
+                    Upload & Import
+                </button>
+                <a href="../" style="padding: 14px 24px; background: #F1F5F9; color: #64748B; border: 1px solid #E2E8F0; border-radius: 12px; font-weight: 600; font-size: 15px; text-decoration: none; text-align: center; transition: all .2s;"
+                   onmouseover="this.style.background='#E2E8F0'" onmouseout="this.style.background='#F1F5F9'">
+                    Cancel
+                </a>
+            </div>
+        </form>
+
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; overflow: hidden;">
+            <div style="padding: 16px 24px; background: linear-gradient(135deg, #F1F5F9, #E2E8F0); border-bottom: 1px solid #E2E8F0;">
+                <h3 style="margin: 0; font-size: 14px; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: .5px;">
+                    📋 Expected CSV Format
+                </h3>
+            </div>
+            <div style="padding: 20px 24px;">
+                <p style="margin: 0 0 12px; font-size: 14px; color: #475569;">
+                    <strong>Required columns:</strong>
+                </p>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px;">
+                    {% for col in expected_columns|cut:" " %}
+                    <span style="display: inline-block; padding: 4px 12px; background: #E3F2FD; color: #1565C0; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: monospace;">{{ col }}</span>
+                    {% endfor %}
+                </div>
+                <p style="margin: 0 0 8px; font-size: 14px; color: #475569; font-weight: 600;">Example:</p>
+                <pre style="background: #1E293B; color: #E2E8F0; padding: 16px 20px; border-radius: 10px; font-size: 13px; overflow-x: auto; line-height: 1.6; margin: 0;">{{ example_csv }}</pre>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -7,6 +7,7 @@ from datetime import datetime
 from django.contrib import admin, messages
 from django.shortcuts import render, redirect
 from django.urls import path
+from django.utils.html import format_html
 
 from .models import (
     Attendance, Assignment, AssignmentSubmission,
@@ -100,10 +101,33 @@ class CSVUploadMixin:
 
 @admin.register(Attendance)
 class AttendanceAdmin(CSVUploadMixin, admin.ModelAdmin):
-    list_display = ['student', 'course', 'date', 'week_number', 'status', 'section']
+    list_display = ['student_name', 'course_code', 'date', 'week_number', 'status_badge', 'show_section']
     list_filter = ['status', 'week_number', 'date', 'section', 'student', 'course']
-    search_fields = ['student__email', 'student__username', 'course__course_code']
+    search_fields = ['student__email', 'student__username', 'student__first_name', 'student__last_name', 'course__course_code']
     date_hierarchy = 'date'
+
+    @admin.display(description='Student', ordering='student__first_name')
+    def student_name(self, obj):
+        return obj.student.get_full_name() or obj.student.username
+
+    @admin.display(description='Course', ordering='course__course_code')
+    def course_code(self, obj):
+        return obj.course.course_code
+
+    @admin.display(description='Status', ordering='status')
+    def status_badge(self, obj):
+        colors = {'present': '#065F46', 'absent': '#991B1B'}
+        bg = {'present': '#D1FAE5', 'absent': '#FEE2E2'}
+        color = colors.get(obj.status, '#111827')
+        background = bg.get(obj.status, '#F3F4F6')
+        return format_html(
+            '<span style="background:{bg}; color:{c}; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;">{t}</span>',
+            bg=background, c=color, t=obj.get_status_display()
+        )
+
+    @admin.display(description='Section', ordering='section')
+    def show_section(self, obj):
+        return obj.get_section_display()
 
     csv_expected_columns = 'student_id, course_code, date, week_number, status, section'
     csv_example = (
@@ -171,18 +195,54 @@ class AttendanceAdmin(CSVUploadMixin, admin.ModelAdmin):
 
 @admin.register(Assignment)
 class AssignmentAdmin(admin.ModelAdmin):
-    list_display = ['title', 'course', 'due_date', 'max_score', 'week_number']
+    list_display = ['title', 'show_course', 'due_date', 'max_score', 'week_number']
     list_filter = ['course', 'week_number', 'due_date']
     search_fields = ['title', 'course__course_code']
     date_hierarchy = 'due_date'
 
+    @admin.display(description='Course', ordering='course__course_code')
+    def show_course(self, obj):
+        return obj.course.course_code
+
 
 @admin.register(AssignmentSubmission)
 class AssignmentSubmissionAdmin(CSVUploadMixin, admin.ModelAdmin):
-    list_display = ['student', 'assignment', 'score', 'status', 'submission_date']
+    list_display = ['student_name', 'assignment_title', 'score_display', 'status_badge', 'submission_date']
     list_filter = ['status', 'submission_date', 'student', 'assignment']
-    search_fields = ['student__email', 'student__username', 'assignment__title']
+    search_fields = ['student__email', 'student__username', 'student__first_name', 'student__last_name', 'assignment__title']
     date_hierarchy = 'submission_date'
+
+    @admin.display(description='Student', ordering='student__first_name')
+    def student_name(self, obj):
+        return obj.student.get_full_name() or obj.student.username
+
+    @admin.display(description='Assignment', ordering='assignment__title')
+    def assignment_title(self, obj):
+        return obj.assignment.title
+
+    @admin.display(description='Score', ordering='score')
+    def score_display(self, obj):
+        if obj.score is None:
+            return '—'
+        color = '#059669' if obj.score >= 80 else '#92400E' if obj.score >= 60 else '#DC2626'
+        return format_html(
+            '<span style="color:{c}; font-weight:700;">{s}</span>',
+            c=color, s=obj.score
+        )
+
+    @admin.display(description='Status', ordering='status')
+    def status_badge(self, obj):
+        color_map = {
+            'graded': ('#065F46', '#D1FAE5'),
+            'submitted': ('#1E3A5F', '#DBEAFE'),
+            'late-submitted': ('#92400E', '#FEF3C7'),
+            'Not Submitted': ('#991B1B', '#FEE2E2'),
+        }
+        color, bg = color_map.get(obj.status, ('#111827', '#F3F4F6'))
+        return format_html(
+            '<span style="background:{bg}; color:{c}; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;">{t}</span>',
+            bg=bg, c=color, t=obj.get_status_display()
+        )
 
     csv_expected_columns = 'student_id, course_code, assignment_title, score, status'
     csv_example = (
@@ -232,18 +292,38 @@ class AssignmentSubmissionAdmin(CSVUploadMixin, admin.ModelAdmin):
 
 @admin.register(Quiz)
 class QuizAdmin(admin.ModelAdmin):
-    list_display = ['title', 'course', 'date', 'max_score', 'week_number']
+    list_display = ['title', 'show_course', 'date', 'max_score', 'week_number']
     list_filter = ['course', 'week_number', 'date']
     search_fields = ['title', 'course__course_code']
     date_hierarchy = 'date'
 
+    @admin.display(description='Course', ordering='course__course_code')
+    def show_course(self, obj):
+        return obj.course.course_code
+
 
 @admin.register(QuizScore)
 class QuizScoreAdmin(CSVUploadMixin, admin.ModelAdmin):
-    list_display = ['student', 'quiz', 'score', 'submitted_date']
+    list_display = ['student_name', 'quiz_title', 'score_display', 'submitted_date']
     list_filter = ['quiz__course', 'submitted_date', 'student', 'quiz']
-    search_fields = ['student__email', 'student__username', 'quiz__title']
+    search_fields = ['student__email', 'student__username', 'student__first_name', 'student__last_name', 'quiz__title']
     date_hierarchy = 'submitted_date'
+
+    @admin.display(description='Student', ordering='student__first_name')
+    def student_name(self, obj):
+        return obj.student.get_full_name() or obj.student.username
+
+    @admin.display(description='Quiz', ordering='quiz__title')
+    def quiz_title(self, obj):
+        return obj.quiz.title
+
+    @admin.display(description='Score', ordering='score')
+    def score_display(self, obj):
+        color = '#059669' if obj.score >= 80 else '#92400E' if obj.score >= 60 else '#DC2626'
+        return format_html(
+            '<span style="color:{c}; font-weight:700;">{s}</span>',
+            c=color, s=obj.score
+        )
 
     csv_expected_columns = 'student_id, course_code, quiz_title, score, status'
     csv_example = (
@@ -293,18 +373,53 @@ class QuizScoreAdmin(CSVUploadMixin, admin.ModelAdmin):
 
 @admin.register(LabActivity)
 class LabActivityAdmin(admin.ModelAdmin):
-    list_display = ['title', 'course', 'teacher', 'date', 'max_score', 'week_number']
+    list_display = ['title', 'course_code', 'teacher_name', 'date', 'max_score', 'week_number']
     list_filter = ['course', 'week_number', 'date']
     search_fields = ['title', 'course__course_code', 'teacher__username']
     date_hierarchy = 'date'
 
+    @admin.display(description='Course', ordering='course__course_code')
+    def course_code(self, obj):
+        return obj.course.course_code
+
+    @admin.display(description='Teacher', ordering='teacher__first_name')
+    def teacher_name(self, obj):
+        return obj.teacher.get_full_name() or obj.teacher.username
+
 
 @admin.register(LabParticipation)
 class LabParticipationAdmin(CSVUploadMixin, admin.ModelAdmin):
-    list_display = ['student', 'lab', 'date', 'score', 'max_score', 'attendance']
+    list_display = ['student_name', 'lab_title', 'date', 'score_display', 'max_score', 'attendance_badge']
     list_filter = ['attendance', 'date', 'lab__course']
-    search_fields = ['student__email', 'student__username', 'lab__title']
+    search_fields = ['student__email', 'student__username', 'student__first_name', 'student__last_name', 'lab__title']
     date_hierarchy = 'date'
+
+    @admin.display(description='Student', ordering='student__first_name')
+    def student_name(self, obj):
+        return obj.student.get_full_name() or obj.student.username
+
+    @admin.display(description='Lab', ordering='lab__title')
+    def lab_title(self, obj):
+        return obj.lab.title
+
+    @admin.display(description='Score', ordering='score')
+    def score_display(self, obj):
+        pct = (obj.score / obj.max_score * 100) if obj.max_score else 0
+        color = '#059669' if pct >= 80 else '#92400E' if pct >= 60 else '#DC2626'
+        return format_html(
+            '<span style="color:{c}; font-weight:700;">{s}</span>',
+            c=color, s=obj.score
+        )
+
+    @admin.display(description='Attended', ordering='attendance')
+    def attendance_badge(self, obj):
+        if obj.attendance:
+            return format_html(
+                '<span style="background:#D1FAE5; color:#065F46; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;">Yes</span>'
+            )
+        return format_html(
+            '<span style="background:#FEE2E2; color:#991B1B; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700;">No</span>'
+        )
 
     csv_expected_columns = 'student_id, course_code, lab_title, date, score, max_score, attendance, remark'
     csv_example = (
