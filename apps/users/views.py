@@ -170,6 +170,7 @@ class AuthViewSet(viewsets.ViewSet):
                         'username': user.username,
                         'first_name': user.first_name,
                         'last_name': user.last_name,
+                        'user_type': user.user_type,
                     }
                 })
             else:
@@ -184,6 +185,7 @@ class AuthViewSet(viewsets.ViewSet):
         """Logout user"""
         request.user.auth_token.delete()
         return Response({'message': 'Logged out successfully'})
+
     
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def profile(self, request):

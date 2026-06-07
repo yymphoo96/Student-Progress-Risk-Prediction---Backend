@@ -25,6 +25,8 @@ urlpatterns = [
     path('api/', include('apps.courses.urls')),
     path('api/', include('apps.analytics.urls')),
     path('api/', include('apps.assessments.urls')),
+    path('api/', include('apps.surveys.urls')),
+    path('', include('apps.surveys.urls')),   # web dashboard (non-api routes)
 ]
 
 if settings.DEBUG:

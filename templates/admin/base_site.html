@@ -24,4 +24,12 @@
 <link rel="stylesheet" href="{% static 'admin/css/custom_admin.css' %}?v={{ timestamp }}">
 {% endblock %}
 
-{% block nav-global %}{% endblock %}
+{% block nav-global %}
+<a href="/survey-dashboard/"
+   style="display:inline-flex;align-items:center;gap:6px;
+          background:#1CB0F6;color:#fff;padding:6px 14px;
+          border-radius:7px;text-decoration:none;font-weight:600;
+          font-size:13px;letter-spacing:.2px;margin-top:2px;">
+  &#128202; Survey Dashboard
+</a>
+{% endblock %}

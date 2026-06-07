@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Survey Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #1CB0F6;
+      --engagement: #1CB0F6;
+      --difficulty: #FF4B4B;
+      --satisfaction: #58CC02;
+      --tei: #FF9600;
+      --clarity: #A560E8;
+    }
+    body { background: #F0F4F8; font-family: 'Segoe UI', sans-serif; }
+
+    .sidebar {
+      width: 270px; min-height: 100vh;
+      background: #fff; border-right: 1px solid #E2E8F0;
+      padding: 24px 20px; position: fixed; top: 0; left: 0; overflow-y: auto;
+    }
+    .main-content { margin-left: 270px; padding: 28px 32px; }
+
+    .sidebar-title { font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: #94A3B8; margin: 20px 0 8px; }
+
+    .chart-type-btn {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      border: 1.5px solid #E2E8F0; background: #F8FAFC; border-radius: 10px;
+      padding: 9px 14px; font-size: 13px; font-weight: 600; color: #475569;
+      cursor: pointer; margin-bottom: 6px; transition: all .15s;
+    }
+    .chart-type-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .chart-type-btn.active {
+      border-color: var(--primary); background: #EFF9FF; color: var(--primary);
+    }
+
+    .field-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 1.5px solid #E2E8F0; border-radius: 20px; padding: 5px 12px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      margin: 3px; transition: all .15s; background: #F8FAFC; color: #64748B;
+      user-select: none;
+    }
+    .field-chip.active { border-color: currentColor; }
+    .field-chip.engagement  { --c: var(--engagement);  }
+    .field-chip.difficulty  { --c: var(--difficulty);  }
+    .field-chip.satisfaction{ --c: var(--satisfaction);}
+    .field-chip.tei         { --c: var(--tei);         }
+    .field-chip.clarity     { --c: var(--clarity);     }
+    .field-chip.active { background: color-mix(in srgb, var(--c) 12%, white);
+      color: var(--c); border-color: var(--c); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+
+    .stat-card { background: #fff; border-radius: 14px; padding: 18px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .stat-value { font-size: 28px; font-weight: 800; color: #1E293B; }
+    .stat-label { font-size: 12px; color: #94A3B8; font-weight: 600; }
+
+    .panel { background: #fff; border-radius: 16px; padding: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+
+    .tei-formula {
+      background: linear-gradient(135deg, #FFF8E1, #FFF3CD);
+      border: 1.5px solid #FFD54F; border-radius: 12px; padding: 12px 16px;
+      font-size: 12px; color: #7A5500;
+    }
+    .tei-formula strong { font-weight: 800; }
+
+    table.data-table { font-size: 13px; }
+    table.data-table th { background: #F8FAFC; font-weight: 700;
+      color: #475569; font-size: 11px; text-transform: uppercase;
+      letter-spacing: .6px; border: none; padding: 10px 14px; }
+    table.data-table td { padding: 10px 14px; border-color: #F1F5F9; }
+    table.data-table tr:hover td { background: #F8FAFC; }
+
+    .no-data { text-align: center; padding: 60px 20px; color: #94A3B8; }
+    .spinner-overlay { display: flex; align-items: center; justify-content: center;
+      min-height: 200px; }
+    #chartCanvas { max-height: 380px; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main-content { margin-left: 0; padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── SIDEBAR ─── -->
+<div class="sidebar">
+  <div class="d-flex align-items-center gap-2 mb-1">
+    <i class="bi bi-bar-chart-fill fs-4 text-primary"></i>
+    <span class="fw-800 fs-5" style="font-weight:800">Survey Dashboard</span>
+  </div>
+  <p class="text-muted" style="font-size:12px;margin-bottom:0">Class feedback analytics</p>
+
+  <div class="sidebar-title">Course</div>
+  <select id="courseSelect" class="form-select form-select-sm">
+    <option value="">— select course —</option>
+    {% for course in courses %}
+    <option value="{{ course.course_id }}">{{ course.course_code }} — {{ course.course_title }}</option>
+    {% endfor %}
+  </select>
+
+  <div class="sidebar-title">Fields</div>
+  <div id="fieldChips">
+    <div class="field-chip engagement active" data-field="Engagement">
+      <div class="dot"></div>Engagement
+    </div>
+    <div class="field-chip difficulty active" data-field="Difficulty">
+      <div class="dot"></div>Difficulty
+    </div>
+    <div class="field-chip satisfaction active" data-field="Satisfaction">
+      <div class="dot"></div>Satisfaction
+    </div>
+    <div class="field-chip tei active" data-field="TEI">
+      <div class="dot"></div>TEI
+    </div>
+    <div class="field-chip clarity active" data-field="Clarity">
+      <div class="dot"></div>Clarity
+    </div>
+  </div>
+
+  <div class="sidebar-title">Presentation</div>
+  <button class="chart-type-btn active" data-type="line">
+    <i class="bi bi-graph-up"></i> Line Chart
+  </button>
+  <button class="chart-type-btn" data-type="bar">
+    <i class="bi bi-bar-chart"></i> Bar Chart
+  </button>
+  <button class="chart-type-btn" data-type="radar">
+    <i class="bi bi-hexagon"></i> Radar Chart
+  </button>
+  <button class="chart-type-btn" data-type="combo">
+    <i class="bi bi-layers"></i> Bar + Line Combo
+  </button>
+  <button class="chart-type-btn" data-type="table">
+    <i class="bi bi-table"></i> Table Only
+  </button>
+
+  <div class="tei-formula mt-3">
+    <strong>TEI Formula</strong><br>
+    0.3 × Engagement<br>
+    + 0.2 × Satisfaction<br>
+    + 0.3 × Clarity<br>
+    − 0.2 × Difficulty
+  </div>
+
+  <div class="mt-4">
+    <a href="/admin/" class="btn btn-sm btn-outline-secondary w-100">
+      <i class="bi bi-arrow-left"></i> Back to Admin
+    </a>
+  </div>
+</div>
+
+<!-- ─── MAIN CONTENT ─── -->
+<div class="main-content">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h4 class="fw-bold mb-0" id="courseTitle">Select a course to begin</h4>
+      <p class="text-muted mb-0" style="font-size:13px" id="courseSubtitle">—</p>
+    </div>
+    <button class="btn btn-sm btn-primary" onclick="loadData()" id="refreshBtn" disabled>
+      <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="row g-3 mb-4" id="statCards" style="display:none!important">
+    <div class="col-sm-4">
+      <div class="stat-card">
+        <div class="stat-value" id="statStudents">—</div>
+        <div class="stat-label"><i class="bi bi-people"></i> Enrolled Students</div>
+      </div>
+    </div>
+    <div class="col-sm-4">
+      <div class="stat-card">
+        <div class="stat-value" id="statWeeks">—</div>
+        <div class="stat-label"><i class="bi bi-calendar3"></i> Weeks with Data</div>
+      </div>
+    </div>
+    <div class="col-sm-4">
+      <div class="stat-card">
+        <div class="stat-value" id="statResponses">—</div>
+        <div class="stat-label"><i class="bi bi-check2-circle"></i> Avg Responses / Week</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart panel -->
+  <div class="panel mb-4" id="chartPanel" style="display:none">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 class="fw-bold mb-0" id="chartTitle">Chart</h6>
+      <small class="text-muted">Average score per week (1–5 scale, TEI computed)</small>
+    </div>
+    <div id="chartContainer">
+      <canvas id="chartCanvas"></canvas>
+    </div>
+    <div id="noDataMsg" class="no-data" style="display:none">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+      No survey responses found for this course yet.
+    </div>
+  </div>
+
+  <!-- Data table (tabbed) -->
+  <div class="panel" id="tablePanel" style="display:none">
+    <ul class="nav nav-tabs mb-3" id="tableTabs">
+      <li class="nav-item">
+        <button class="nav-link active" id="tabAvgBtn" onclick="switchTableTab('avg')">
+          <i class="bi bi-calculator me-1"></i>Average per Week
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="tabRecBtn" onclick="switchTableTab('records')">
+          <i class="bi bi-list-ul me-1"></i>All Records
+        </button>
+      </li>
+    </ul>
+
+    <!-- Average table -->
+    <div id="avgTableSection">
+      <div class="table-responsive">
+        <table class="table data-table" id="dataTable">
+          <thead><tr id="tableHead"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- All records — per-field sub-tabs -->
+    <div id="recTableSection" style="display:none">
+      <div id="recLoading" class="text-center py-4">
+        <div class="spinner-border text-primary spinner-border-sm"></div>
+        <span class="ms-2 text-muted">Loading records…</span>
+      </div>
+
+      <!-- Field sub-tabs (hidden until data loads) -->
+      <div id="recContent" style="display:none">
+        <div class="d-flex flex-wrap gap-2 mb-3" id="fieldTabBtns"></div>
+        <div class="table-responsive">
+          <table class="table data-table">
+            <thead>
+              <tr>
+                <th>Week</th><th>Student</th><th>Student ID</th><th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="recBody"></tbody>
+          </table>
+        </div>
+        <div id="recEmpty" class="no-data" style="display:none">
+          <i class="bi bi-inbox fs-1 d-block mb-2"></i>No records for this field yet.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Initial state -->
+  <div id="emptyState" class="panel text-center py-5">
+    <i class="bi bi-bar-chart-line fs-1 text-secondary d-block mb-3"></i>
+    <h5 class="text-secondary">Select a course from the sidebar</h5>
+    <p class="text-muted">Survey analytics will appear here once a course is selected.</p>
+  </div>
+
+</div>
+
+<script>
+// ─── State ───
+const COLORS = {
+  Engagement:   '#1CB0F6',
+  Difficulty:   '#FF4B4B',
+  Satisfaction: '#58CC02',
+  TEI:          '#FF9600',
+  Clarity:      '#A560E8',
+};
+
+let chartInstance = null;
+let currentData   = null;
+let activeType    = 'line';
+let activeFields  = new Set(['Engagement','Difficulty','Satisfaction','TEI','Clarity']);
+
+// ─── Init ───
+document.getElementById('courseSelect').addEventListener('change', loadData);
+
+document.querySelectorAll('.chart-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeType = btn.dataset.type;
+    if (currentData) render();
+  });
+});
+
+document.querySelectorAll('.field-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const field = chip.dataset.field;
+    if (activeFields.has(field)) {
+      if (activeFields.size === 1) return; // keep at least one
+      activeFields.delete(field);
+      chip.classList.remove('active');
+    } else {
+      activeFields.add(field);
+      chip.classList.add('active');
+    }
+    if (currentData) render();
+  });
+});
+
+// ─── Load data ───
+async function loadData() {
+  const courseId = document.getElementById('courseSelect').value;
+  if (!courseId) return;
+
+  document.getElementById('refreshBtn').disabled = false;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('chartPanel').style.display = 'none';
+  document.getElementById('tablePanel').style.display = 'none';
+  document.getElementById('statCards').style.removeProperty('display');
+  document.getElementById('statCards').style.display = 'none';
+
+  // Show spinner
+  document.getElementById('chartPanel').style.display = 'block';
+  document.getElementById('chartPanel').innerHTML =
+    `<div class="spinner-overlay"><div class="spinner-border text-primary"></div></div>`;
+
+  try {
+    const resp = await fetch(`/survey-dashboard/data/?course_id=${courseId}`);
+    const json = await resp.json();
+    currentData = json;
+
+    // Restore chart panel
+    document.getElementById('chartPanel').innerHTML = `
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h6 class="fw-bold mb-0" id="chartTitle">Chart</h6>
+        <small class="text-muted">Average score per week (1–5 scale, TEI computed)</small>
+      </div>
+      <div id="chartContainer"><canvas id="chartCanvas"></canvas></div>
+      <div id="noDataMsg" class="no-data" style="display:none">
+        <i class="bi bi-inbox fs-1 d-block mb-2"></i>No survey responses found yet.
+      </div>`;
+
+    document.getElementById('courseTitle').textContent =
+      `${json.course_code} — ${json.course_title}`;
+    document.getElementById('courseSubtitle').textContent =
+      json.weeks.length ? `${json.weeks.length} week${json.weeks.length!==1?'s':''} of data` : 'No responses yet';
+
+    // Stats
+    const avgResp = json.response_counts.length
+      ? Math.round(json.response_counts.reduce((a,b)=>a+b,0)/json.response_counts.length)
+      : 0;
+    document.getElementById('statStudents').textContent  = json.student_count;
+    document.getElementById('statWeeks').textContent     = json.weeks.length;
+    document.getElementById('statResponses').textContent = avgResp;
+    document.getElementById('statCards').style.display   = 'flex';
+
+    render();
+  } catch(e) {
+    document.getElementById('chartPanel').innerHTML =
+      `<div class="no-data"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2 text-danger"></i>Failed to load data.</div>`;
+  }
+}
+
+// ─── Render ───
+function render() {
+  const data = currentData;
+  const weeks = data.weeks;
+  const fields = [...activeFields].filter(f => data.data[f]);
+
+  // Table always shown (except table-only mode hides chart)
+  buildTable(weeks, fields, data.data, data.response_counts);
+  document.getElementById('tablePanel').style.display = 'block';
+
+  if (activeType === 'table') {
+    document.getElementById('chartPanel').style.display = 'none';
+    return;
+  }
+  document.getElementById('chartPanel').style.display = 'block';
+
+  if (!weeks.length) {
+    document.getElementById('chartContainer').style.display = 'none';
+    document.getElementById('noDataMsg').style.display = 'block';
+    return;
+  }
+  document.getElementById('chartContainer').style.display = 'block';
+  document.getElementById('noDataMsg').style.display = 'none';
+
+  if (activeType === 'line')   buildLineChart(weeks, fields, data.data);
+  else if (activeType === 'bar')   buildBarChart(weeks, fields, data.data);
+  else if (activeType === 'radar') buildRadarChart(weeks, fields, data.data);
+  else if (activeType === 'combo') buildComboChart(weeks, fields, data.data);
+
+  document.getElementById('chartTitle').textContent =
+    { line:'Line Chart', bar:'Bar Chart', radar:'Radar Chart', combo:'Bar + Line Combo' }[activeType] || 'Chart';
+}
+
+function destroyChart() {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+}
+
+// ─── Line ───
+function buildLineChart(weeks, fields, data) {
+  destroyChart();
+  const canvas = document.getElementById('chartCanvas');
+  chartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: weeks,
+      datasets: fields.map(f => ({
+        label: f,
+        data: data[f],
+        borderColor: COLORS[f],
+        backgroundColor: COLORS[f] + '20',
+        pointBackgroundColor: COLORS[f],
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2.5,
+        tension: 0.35,
+        fill: false,
+      }))
+    },
+    options: commonOptions('Score (1–5)')
+  });
+}
+
+// ─── Bar ───
+function buildBarChart(weeks, fields, data) {
+  destroyChart();
+  chartInstance = new Chart(document.getElementById('chartCanvas'), {
+    type: 'bar',
+    data: {
+      labels: weeks,
+      datasets: fields.map(f => ({
+        label: f,
+        data: data[f],
+        backgroundColor: COLORS[f] + 'CC',
+        borderColor: COLORS[f],
+        borderWidth: 1.5,
+        borderRadius: 5,
+      }))
+    },
+    options: commonOptions('Score (1–5)')
+  });
+}
+
+// ─── Radar ───
+function buildRadarChart(weeks, fields, data) {
+  destroyChart();
+  // Corners = weeks, one polygon per selected field
+  const datasets = fields.map(f => ({
+    label: f,
+    data: weeks.map((_, i) => data[f]?.[i] ?? 0),
+    borderColor: COLORS[f],
+    backgroundColor: COLORS[f] + '28',
+    pointBackgroundColor: COLORS[f],
+    pointBorderColor: '#fff',
+    pointRadius: 4,
+    borderWidth: 2,
+  }));
+  chartInstance = new Chart(document.getElementById('chartCanvas'), {
+    type: 'radar',
+    data: { labels: weeks, datasets },
+    options: {
+      responsive: true,
+      scales: {
+        r: {
+          min: 0, max: 5,
+          ticks: { stepSize: 1, backdropColor: 'transparent', font: { size: 11 } },
+          grid: { color: '#E2E8F0' },
+          pointLabels: { font: { size: 12, weight: '600' }, color: '#475569' },
+        }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } },
+        tooltip: { backgroundColor: '#1E293B', padding: 10 },
+      }
+    }
+  });
+}
+
+// ─── Combo (first field = bars, rest = lines) ───
+function buildComboChart(weeks, fields, data) {
+  destroyChart();
+  if (!fields.length) return;
+  const [barField, ...lineFields] = fields;
+  const datasets = [
+    {
+      type: 'bar',
+      label: barField,
+      data: data[barField],
+      backgroundColor: COLORS[barField] + 'AA',
+      borderColor: COLORS[barField],
+      borderWidth: 1.5,
+      borderRadius: 5,
+      yAxisID: 'y',
+    },
+    ...lineFields.map(f => ({
+      type: 'line',
+      label: f,
+      data: data[f],
+      borderColor: COLORS[f],
+      backgroundColor: COLORS[f] + '20',
+      pointBackgroundColor: COLORS[f],
+      pointRadius: 5,
+      borderWidth: 2.5,
+      tension: 0.35,
+      fill: false,
+      yAxisID: 'y1',
+    }))
+  ];
+  chartInstance = new Chart(document.getElementById('chartCanvas'), {
+    data: { labels: weeks, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } } },
+      scales: {
+        x: { grid: { color: '#F1F5F9' } },
+        y: { min: 0, max: 5, title: { display: true, text: barField }, grid: { color: '#F1F5F9' } },
+        y1: { min: 0, max: 5, position: 'right', title: { display: true, text: 'Others' },
+               grid: { drawOnChartArea: false } },
+      }
+    }
+  });
+}
+
+// ─── Table ───
+function buildTable(weeks, fields, data, responseCounts) {
+  const head = document.getElementById('tableHead');
+  const body = document.getElementById('tableBody');
+
+  head.innerHTML = `<th>Week</th>` +
+    fields.map(f => `<th style="color:${COLORS[f]}">${f}</th>`).join('') +
+    `<th>Responses</th>`;
+
+  body.innerHTML = weeks.map((w, i) =>
+    `<tr>
+      <td class="fw-600">${w}</td>
+      ${fields.map(f => {
+        const v = data[f]?.[i] ?? '—';
+        const num = parseFloat(v);
+        const color = isNaN(num) ? '' : num >= 4 ? '#16a34a' : num < 2.5 ? '#dc2626' : '#64748b';
+        return `<td style="color:${color};font-weight:600">${isNaN(num)?v:num.toFixed(2)}</td>`;
+      }).join('')}
+      <td class="text-muted">${responseCounts[i] ?? 0}</td>
+    </tr>`
+  ).join('');
+}
+
+// ─── Table tabs ───
+const ALL_FIELDS = ['Engagement', 'Difficulty', 'Satisfaction', 'Clarity', 'TEI'];
+let currentTab      = 'avg';
+let activeFieldTab  = 'Engagement';
+let recordsLoaded   = false;
+let allRecordsData  = {};   // {field: [{week, student, student_id, score}]}
+
+function switchTableTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabAvgBtn').classList.toggle('active', tab === 'avg');
+  document.getElementById('tabRecBtn').classList.toggle('active', tab === 'records');
+  document.getElementById('avgTableSection').style.display = tab === 'avg' ? '' : 'none';
+  document.getElementById('recTableSection').style.display = tab === 'records' ? '' : 'none';
+  if (tab === 'records' && !recordsLoaded) loadAllRecords();
+}
+
+async function loadAllRecords() {
+  const courseId = document.getElementById('courseSelect').value;
+  if (!courseId) return;
+
+  document.getElementById('recLoading').style.display = 'block';
+  document.getElementById('recContent').style.display  = 'none';
+
+  try {
+    const resp = await fetch(`/survey-dashboard/records/?course_id=${courseId}`);
+    const json = await resp.json();
+    allRecordsData = json.fields || {};
+
+    document.getElementById('recLoading').style.display = 'none';
+    document.getElementById('recContent').style.display  = '';
+
+    // Build field tab buttons
+    const btnContainer = document.getElementById('fieldTabBtns');
+    btnContainer.innerHTML = ALL_FIELDS.map(f =>
+      `<button
+        class="field-chip ${f.toLowerCase().replace(' ','_')} ${f===activeFieldTab?'active':''}"
+        style="--c:${COLORS[f]}"
+        onclick="switchFieldTab('${f}')">
+        <div class="dot"></div>${f}
+      </button>`
+    ).join('');
+
+    renderFieldTable(activeFieldTab);
+    recordsLoaded = true;
+  } catch(e) {
+    document.getElementById('recLoading').style.display = 'none';
+    document.getElementById('recContent').style.display  = '';
+    document.getElementById('recBody').innerHTML = '';
+    document.getElementById('recEmpty').style.display = 'block';
+    document.getElementById('recEmpty').innerHTML =
+      '<i class="bi bi-exclamation-triangle fs-1 d-block mb-2 text-danger"></i>Failed to load records.';
+  }
+}
+
+function switchFieldTab(field) {
+  activeFieldTab = field;
+  document.querySelectorAll('#fieldTabBtns .field-chip').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === field);
+  });
+  renderFieldTable(field);
+}
+
+function renderFieldTable(field) {
+  const rows  = allRecordsData[field] || [];
+  const body  = document.getElementById('recBody');
+  const empty = document.getElementById('recEmpty');
+
+  if (!rows.length) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    empty.innerHTML = '<i class="bi bi-inbox fs-1 d-block mb-2"></i>No records for this field yet.';
+    return;
+  }
+  empty.style.display = 'none';
+  const color = COLORS[field] || '#64748b';
+
+  body.innerHTML = rows.map(r => {
+    const score = r.score !== null ? parseFloat(r.score).toFixed(2) : '—';
+    const sc    = r.score === null ? '#94A3B8'
+                : r.score >= 4    ? '#16a34a'
+                : r.score < 2.5   ? '#dc2626' : '#64748b';
+    return `<tr>
+      <td><span style="background:${color}18;color:${color};padding:2px 10px;
+        border-radius:12px;font-size:12px;font-weight:700">Week ${r.week}</span></td>
+      <td class="fw-600">${r.student}</td>
+      <td class="text-muted">${r.student_id}</td>
+      <td style="color:${sc};font-weight:700">${score}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Reset when course changes
+document.getElementById('courseSelect').addEventListener('change', () => {
+  recordsLoaded  = false;
+  allRecordsData = {};
+  activeFieldTab = 'Engagement';
+  currentTab     = 'avg';
+  document.getElementById('tabAvgBtn').classList.add('active');
+  document.getElementById('tabRecBtn').classList.remove('active');
+  document.getElementById('avgTableSection').style.display = '';
+  document.getElementById('recTableSection').style.display = 'none';
+  document.getElementById('recContent').style.display      = 'none';
+});
+
+// ─── Shared chart options ───
+function commonOptions(yLabel) {
+  return {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16, font: { size: 12 } } },
+      tooltip: { backgroundColor: '#1E293B', padding: 12, titleFont: { size: 13 } }
+    },
+    scales: {
+      x: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 12 } } },
+      y: { min: 0, max: 5, title: { display: true, text: yLabel },
+           grid: { color: '#F1F5F9' }, ticks: { stepSize: 1 } }
+    }
+  };
+}
+</script>
+</body>
+</html>
